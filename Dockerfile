@@ -53,11 +53,8 @@ RUN chown -R appuser:appgroup /usr/app
 USER appuser
 
 # Create necessary directories and set ownership to appuser
-RUN mkdir -p /usr/app/upload \
-    && mkdir -p /usr/app/.logs \
-    && mkdir -p /usr/app/.keys \
+RUN mkdir -p /usr/app/.logs \
     && mkdir -p /usr/app/certs 
-
 
 # Copy package.json so that package manager commands can be used.
 COPY package.json .
@@ -88,10 +85,7 @@ RUN npm install
 USER appuser
 
 # Create necessary dirs and set ownership to appuser
-RUN mkdir -p /usr/app/upload \
-    && mkdir -p /usr/app/.logs \
-    && mkdir -p /usr/app/.keys
-
+RUN mkdir -p /usr/app/.logs
 
 COPY . .
 
