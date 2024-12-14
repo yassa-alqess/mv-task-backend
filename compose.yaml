@@ -1,0 +1,13 @@
+services:
+  server:
+    depends_on:
+      - sql-db
+      - cache
+
+  sql-db:
+    image: postgres:latest
+    restart: always
+
+  cache:
+    image: redis:latest
+    restart: always
