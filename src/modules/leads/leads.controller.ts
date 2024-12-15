@@ -1,10 +1,11 @@
 import LeadsService from './leads.service'; // Adjust the import according to your project structure
 import { ILeadAddPayload, ILeadsGetPayload } from './leads.interface'; // Adjust the import according to your project structure
-import { accessTokenGuard, requireAnyOfThoseRoles } from '../../shared/middlewares';
+import { accessTokenGuard, requireAnyOfThoseRoles, validate } from '../../shared/middlewares';
 import { RoleEnum } from '../../shared/enums';
 import { Controller } from '../../shared/interfaces';
 import { LEADS_PATH } from '../../shared/constants';
 import { InternalServerException } from '../../shared/exceptions';
+import { CreateLeadDto } from './leads.dto';
 
 // 3rd party dependencies
 import express, { NextFunction, Request, Response } from 'express';
@@ -20,7 +21,7 @@ export default class LeadsController implements Controller {
     }
 
     private _initializeRoutes() {
-        this.router.post(`${this.path}`, this.addLead);
+        this.router.post(`${this.path}`, validate(CreateLeadDto), this.addLead);
         this.router.get(
             `${this.path}`,
             accessTokenGuard,
