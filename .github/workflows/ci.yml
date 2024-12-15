@@ -49,4 +49,4 @@ jobs:
           context: .
           target: final
           push: true
-          tags: ${{ secrets.DOCKER_REPO }}
+          tags: ${{ secrets.DOCKER_REPO }} # e.g. ghcr.io/username/repo:tag

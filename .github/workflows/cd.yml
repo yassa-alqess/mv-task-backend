@@ -42,4 +42,4 @@ jobs:
 
       - name: Deploy to Server
         run: |
-          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cd ~/app/ && echo $SSH_PASS | sudo -S docker-compose -f ompose.yml up -d --build"
+          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cd ~/app/ && echo $SSH_PASS | sudo -S docker-compose -f compose.yml up -d --build"
