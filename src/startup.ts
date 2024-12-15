@@ -4,6 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { Server } from 'http';
+import { createServer, Server as SecureServer } from 'https';
+import fs from 'fs';
 
 // src imports & config
 import './config/env'
@@ -12,10 +14,38 @@ import logger from './config/logger';
 import { initDatabases, closeConnections } from './config/database/db-factory'; // close db connection
 import { errorMiddleware, notFoundMiddleware, responseFormatter, loggerMiddleware } from './shared/middlewares';
 import { initializeRedisClient } from './config/cache'; // initialize redis client
+import { StageEnum } from './shared/enums';
 
 // app container & server instance
 const APP = express();
-let server: Server  | null = null;
+let server: Server | SecureServer | null = null;
+
+// spin up the server depenging on the stage
+switch (ENV) {
+  case StageEnum.DEV:
+    server = APP.listen(PORT, () => {
+      logger.info(`⚡️[server]: Server is running at http://localhost:${PORT} in ${ENV} mode`);
+    });
+    break;
+
+  case StageEnum.PROD:
+    // Load SSL certificates
+    const sslOptions = {
+      key: fs.readFileSync('./certs/privkey1.pem'),
+      cert: fs.readFileSync('./certs/fullchain1.pem'),
+    };
+    server = createServer(sslOptions, APP);
+    server.listen(PORT, () => {
+      logger.info(`⚡️[server]: Server is running at https://localhost:${PORT} in ${ENV} mode`);
+    });
+    break;
+
+  default:
+    server = APP.listen(PORT, () => {
+      logger.info(`⚡️[server]: Server is running at http://localhost:${PORT} in ${ENV} mode`);
+    });
+    break;
+}
 
 
 // startup script
@@ -53,10 +83,6 @@ let server: Server  | null = null;
     // app dependencies
     await initDatabases(); // initialize db connections
     await initializeRedisClient(); // initialize redis client
-
-    server = APP.listen(PORT, () => {
-      logger.info(`⚡️[server]: Server is running at http://localhost:${PORT} in ${ENV} mode`);
-    });
 
   } catch (error) {
     logger.error('Unable to connect,', error);
