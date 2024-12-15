@@ -42,8 +42,6 @@ The application requires specific environment variables for development and prod
 
   - Update the values in `.env.prod` with production-specific values.
 
-- Both **Development** and **Production** modes require additional Google service keys. Ensure you have the required `.keys/credentials.json` for Google services available in both environments.
-
 ### 3. Add SSL Certificates for Production (Optional)
 
 For production, you need to provide self-signed certificates:
