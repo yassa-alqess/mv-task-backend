@@ -4,7 +4,7 @@ import { Controller } from '../../shared/interfaces/controller.interface';
 import { validate } from '../../shared/middlewares';
 import AuthService from './auth.service';
 import logger from '../../config/logger';
-import { LoginSchema } from './auth.dto';
+import { LoginSchema, RefreshTokenSchema } from './auth.dto';
 import { InternalServerException, NotFoundException, WrongCredentialsException } from '../../shared/exceptions';
 
 // 3rd party dependencies
@@ -21,6 +21,7 @@ export default class AuthController implements Controller {
 
     private _initializeRoutes() {
         this.router.post(`${this.path}/login`, validate(LoginSchema), this.login);
+        this.router.post(`${this.path}/refresh-token`, validate(RefreshTokenSchema), this.refreshToken);
     }
     public login = async (req: Request, res: Response, next: NextFunction) => {
         const { email, password } = req.body;
@@ -39,6 +40,22 @@ export default class AuthController implements Controller {
                 return next(error);
             }
             next(new InternalServerException(error.message));
+        }
+    }
+
+    public refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+        const { refreshToken } = req.body;
+        try {
+            const tokens = await this._authService.refreshToken(refreshToken);
+            res.status(StatusCodes.OK).json({
+                accessToken: tokens[0],
+                refreshToken: tokens[1],
+                type: 'Bearer',
+            }).end();
+            //eslint-disable-next-line
+        } catch (error: any) {
+            logger.error(`error at refreshToken action ${error.message}`);
+            next(new InternalServerException(`${error.message}`));
         }
     }
 }

@@ -1,11 +1,11 @@
 // file dependencies
-import { ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY } from "../../shared/constants";
+import { ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, REFRESH_TOKEN_SECRET } from "../../shared/constants";
 import User from "../../shared/models/user";
 import RefreshToken from "../../shared/models/refresh-token";
 import { generateAccessToken, generateRefreshToken } from "../../shared/utils";
 import { IAuthPayload } from "./auth.interface";
 import { RoleEnum } from "../../shared/enums";
-import { NotFoundException, WrongCredentialsException } from "../../shared/exceptions";
+import { ExpiredException, InvalidTokenException, NotFoundException, WrongCredentialsException } from "../../shared/exceptions";
 import { initializeRedisClient } from "../../config/cache";
 import logger from "../../config/logger";
 
@@ -13,14 +13,17 @@ import logger from "../../config/logger";
 import bcrypt from 'bcrypt'
 import ms from 'ms'
 import { RedisClientType } from "redis";
+import jwt, { TokenExpiredError } from 'jsonwebtoken';
 
 export default class AuthService {
     constructor(private _redisClient: RedisClientType | null = null) {
         this._initializeRedisClient();
     }
+
     private async _initializeRedisClient(): Promise<void> {
         this._redisClient = await initializeRedisClient();
     }
+
     public async login(email: string, password: string): Promise<string[]> {
 
         // check if user exists & credentials are correct
@@ -49,6 +52,46 @@ export default class AuthService {
         catch (err: any) {
             logger.error(`error in login service: ${err.message}`);
             throw new Error('couldn\'t login at the moment');
+        }
+    }
+
+    public async refreshToken(refreshToken: string): Promise<string[]> {
+
+        let refreshTokenValue;
+        let userPayload: IAuthPayload;
+        try {
+            userPayload = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET as string) as IAuthPayload;
+
+            refreshTokenValue = await RefreshToken.findOne({
+                where: {
+                    value: refreshToken,
+                },
+            });
+
+            if (!refreshTokenValue)
+                throw new InvalidTokenException('refresh token');
+        } //eslint-disable-next-line
+        catch (err: any) {
+            if (err instanceof TokenExpiredError) {
+                throw new ExpiredException('refresh token');
+            }
+            throw new InvalidTokenException('refresh token');
+        }
+
+        try {
+
+            // payload already has an "exp" property, so no need to add it
+            const accessToken = generateAccessToken({ id: userPayload.id, roles: userPayload.roles }) as string;
+            await this._redisClient?.setEx(`access-token:${userPayload.id}:${accessToken}`, ms(ACCESS_TOKEN_EXPIRY), 'valid');
+
+            const newRefreshToken = generateRefreshToken({ id: userPayload.id, roles: userPayload.roles }) as string;
+            await refreshTokenValue.update({ value: newRefreshToken, expiresAt: new Date(Date.now() + ms(REFRESH_TOKEN_EXPIRY)) });
+            return [accessToken, newRefreshToken];
+        }
+        //eslint-disable-next-line
+        catch (err: any) {
+            logger.error(`error in refreshToken service: ${err.message}`);
+            throw new Error('couldn\'t refresh the token');
         }
     }
 
